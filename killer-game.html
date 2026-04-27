@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>誰是殺手</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            overflow: hidden;
+            background: #0a0a0a;
+        }
+        
+        #gameContainer {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        #roleDisplay {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 30px;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 24px;
+            border: 2px solid #ff4444;
+            text-align: center;
+        }
+        
+        #roleDisplay.sheriff {
+            border-color: #4488ff;
+        }
+        
+        #roleDisplay.civilian {
+            border-color: #44ff44;
+        }
+        
+        #timer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 25px;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 28px;
+            font-weight: bold;
+            border: 2px solid #ffaa00;
+        }
+        
+        #ammoDisplay {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 25px;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 20px;
+            border: 2px solid #4488ff;
+            display: none;
+        }
+        
+        #healthBar {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 200px;
+            height: 25px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 12px;
+            border: 2px solid #ff4444;
+            overflow: hidden;
+        }
+        
+        #healthFill {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444, #ff6666);
+            transition: width 0.3s;
+        }
+        
+        #statusMsg {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px 50px;
+            border-radius: 15px;
+            color: #fff;
+            font-size: 32px;
+            text-align: center;
+            display: none;
+            pointer-events: auto;
+        }
+        
+        #startScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+        }
+        
+        #startScreen h1 {
+            color: #fff;
+            font-size: 64px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px #ff4444;
+        }
+        
+        #startScreen p {
+            color: #aaa;
+            font-size: 18px;
+            margin-bottom: 40px;
+            text-align: center;
+            max-width: 600px;
+            line-height: 1.8;
+        }
+        
+        #startBtn {
+            background: linear-gradient(135deg, #ff4444, #cc0000);
+            color: #fff;
+            border: none;
+            padding: 20px 60px;
+            font-size: 24px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-family: 'Noto Sans TC', sans-serif;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 5px 30px rgba(255, 68, 68, 0.5);
+        }
+        
+        #startBtn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 40px rgba(255, 68, 68, 0.7);
+        }
+        
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+        }
+        
+        #crosshair::before,
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            background: #fff;
+        }
+        
+        #crosshair::before {
+            width: 2px;
+            height: 20px;
+            left: 9px;
+            top: 0;
+        }
+        
+        #crosshair::after {
+            width: 20px;
+            height: 2px;
+            top: 9px;
+            left: 0;
+        }
+        
+        #actionBtn {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 68, 68, 0.9);
+            color: #fff;
+            border: 2px solid #fff;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            pointer-events: auto;
+            display: none;
+            font-family: 'Noto Sans TC', sans-serif;
+        }
+        
+        #actionBtn.sheriff-action {
+            background: rgba(68, 136, 255, 0.9);
+        }
+        
+        #pickupMsg {
+            position: absolute;
+            bottom: 130px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 10px 20px;
+            border-radius: 8px;
+            color: #ffaa00;
+            font-size: 16px;
+            display: none;
+        }
+        
+        .player-avatar {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            border: 3px solid #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            transition: transform 0.1s;
+        }
+        
+        .player-avatar.killer {
+            background: #ff4444;
+        }
+        
+        .player-avatar.sheriff {
+            background: #4488ff;
+        }
+        
+        .player-avatar.civilian {
+            background: #44ff44;
+        }
+        
+        .player-avatar.dead {
+            opacity: 0.3;
+            filter: grayscale(100%);
+        }
+        
+        #killConfirm {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.95);
+            padding: 40px 60px;
+            border-radius: 15px;
+            color: #fff;
+            font-size: 28px;
+            text-align: center;
+            display: none;
+            pointer-events: auto;
+        }
+        
+        #killConfirm button {
+            margin: 10px;
+            padding: 10px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-family: 'Noto Sans TC', sans-serif;
+        }
+        
+        #killConfirm .confirm-btn {
+            background: #ff4444;
+            color: #fff;
+        }
+        
+        #killConfirm .cancel-btn {
+            background: #666;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="ui">
+            <div id="roleDisplay">載入中...</div>
+            <div id="timer">03:00</div>
+            <div id="ammoDisplay">子彈: 6/6</div>
+            <div id="healthBar">
+                <div id="healthFill"></div>
+            </div>
+            <div id="crosshair"></div>
+            <button id="actionBtn"></button>
+            <div id="pickupMsg">按下 E 撿起槍枝</div>
+            <div id="statusMsg"></div>
+            <div id="killConfirm">
+                確定要攻擊嗎？
+                <br><br>
+                <button class="confirm-btn" id="confirmAttack">確定</button>
+                <button class="cancel-btn" id="cancelAttack">取消</button>
+            </div>
+        </div>
+        
+        <div id="startScreen">
+            <h1>誰是殺手</h1>
+            <p>
+                🎭 10位玩家中，有1位殺手和1位警長<br>
+                ⏱️ 遊戲時間：3分鐘<br><br>
+                <b>殺手</b>：可隨機殺害其他玩家<br>
+                <b>警長</b>：有槍可槍斃殺手（誤殺平民會死亡並掉落槍）<br>
+                <b>平民</b>：找出殺手並報告警長<br><br>
+                WASD 移動 | 滑鼠視角 | 點擊攻擊 | E 撿起物品
+            </p>
+            <button id="startBtn">開始遊戲</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        const state = {
+            gameStarted: false,
+            gameOver: false,
+            role: null,
+            player: null,
+            players: [],
+            timeRemaining: 180,
+            ammo: 6,
+            hasGun: false,
+            gunOnGround: false,
+            playerAngle: 0,
+            targetPlayer: null,
+            keys: { w: false, a: false, s: false, d: false }
+        };
+        
+        const playerNames = ['小明', '小華', '大雄', '靜香', '胖虎', '小夫', '阿呆', '小美', '小強', '阿婆'];
+        
+        function initGame() {
+            let killerIndex, sheriffIndex;
+            
+            do {
+                killerIndex = Math.floor(Math.random() * 10);
+                sheriffIndex = Math.floor(Math.random() * 10);
+            } while (killerIndex === sheriffIndex);
+            
+            state.players = [];
+            
+            for (let i = 0; i < 10; i++) {
+                const angle = (i / 10) * Math.PI * 2;
+                const radius = 200 + Math.random() * 100;
+                
+                let role = 'civilian';
+                if (i === killerIndex) {
+                    role = 'killer';
+                } else if (i === sheriffIndex) {
+                    role = 'sheriff';
+                }
+                
+                state.players.push({
+                    id: i,
+                    name: playerNames[i],
+                    role: role,
+                    x: Math.cos(angle) * radius,
+                    y: Math.sin(angle) * radius,
+                    alive: true,
+                    angle: angle + Math.PI
+                });
+            }
+            
+            state.player = state.players[0];
+            state.role = state.player.role;
+            
+            if (state.role === 'sheriff') {
+                state.hasGun = true;
+            }
+            
+            console.log('All players:', state.players.map(p => ({name: p.name, role: p.role})));
+            updateRoleDisplay();
+        }
+        
+        function updateRoleDisplay() {
+            const roleDisplay = document.getElementById('roleDisplay');
+            const roleNames = {
+                killer: '🔪 你是殺手！',
+                sheriff: '👮 你是警長！',
+                civilian: '👤 你是平民'
+            };
+            roleDisplay.textContent = roleNames[state.role];
+            roleDisplay.className = state.role;
+            
+            if (state.role === 'sheriff') {
+                document.getElementById('ammoDisplay').style.display = 'block';
+                updateAmmoDisplay();
+            }
+        }
+        
+        function updateAmmoDisplay() {
+            document.getElementById('ammoDisplay').textContent = `子彈: ${state.ammo}/6`;
+        }
+        
+        function updateHealthBar(health) {
+            document.getElementById('healthFill').style.width = health + '%';
+        }
+        
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        function gameLoop() {
+            if (!state.gameStarted || state.gameOver) return;
+            
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            drawGrid();
+            
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(-state.playerAngle);
+            ctx.translate(-centerX, -centerY);
+            
+            state.players.forEach(p => {
+                if (p.id === 0 || !p.alive) return;
+                drawPlayer(p);
+            });
+            
+            if (state.gunOnGround) {
+                drawGunOnGround();
+            }
+            
+            ctx.restore();
+            
+            drawMinimap();
+            
+            checkInteractions();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            
+            for (let x = 0; x < canvas.width; x += 50) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            for (let y = 0; y < canvas.height; y += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+        
+        function drawPlayer(p) {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            const screenX = centerX + p.x - state.player.x;
+            const screenY = centerY + p.y - state.player.y;
+            
+            if (screenX < -50 || screenX > canvas.width + 50 || 
+                screenY < -50 || screenY > canvas.height + 50) return;
+            
+            ctx.save();
+            ctx.translate(screenX, screenY);
+            
+            const colors = {
+                killer: '#ff4444',
+                sheriff: '#4488ff',
+                civilian: '#44ff44'
+            };
+            
+            ctx.fillStyle = colors[p.role] || '#888';
+            ctx.beginPath();
+            ctx.arc(0, 0, 25, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            const roleLabels = { killer: 'K', sheriff: 'S', civilian: 'C' };
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 16px Noto Sans TC';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(roleLabels[p.role] || '?', 0, -8);
+            ctx.font = 'bold 10px Noto Sans TC';
+            ctx.fillText(p.name, 0, 10);
+            
+            ctx.restore();
+        }
+        
+        function drawGunOnGround() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            state.players.forEach(p => {
+                if (p.alive && p.role === 'sheriff') return;
+            });
+            
+            const screenX = centerX + 100 - state.player.x;
+            const screenY = centerY + 50 - state.player.y;
+            
+            if (screenX < -50 || screenX > canvas.width + 50 || 
+                screenY < -50 || screenY > canvas.height + 50) return;
+            
+            ctx.save();
+            ctx.translate(screenX, screenY);
+            
+            ctx.fillStyle = '#ffaa00';
+            ctx.fillRect(-15, -5, 30, 10);
+            ctx.fillStyle = '#888';
+            ctx.fillRect(15, -3, 10, 6);
+            
+            ctx.restore();
+        }
+        
+        function drawMinimap() {
+            const mapSize = 150;
+            const mapX = canvas.width - mapSize - 20;
+            const mapY = 20;
+            const scale = 0.3;
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(mapX, mapY, mapSize, mapSize);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(mapX, mapY, mapSize, mapSize);
+            
+            state.players.forEach(p => {
+                if (!p.alive) return;
+                
+                const px = mapX + mapSize/2 + p.x * scale;
+                const py = mapY + mapSize/2 + p.y * scale;
+                
+                const colors = {
+                    killer: '#ff4444',
+                    sheriff: '#4488ff',
+                    civilian: '#44ff44'
+                };
+                
+                ctx.fillStyle = colors[p.role];
+                ctx.beginPath();
+                ctx.arc(px, py, p.id === 0 ? 6 : 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+        
+        function checkInteractions() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            let nearestPlayer = null;
+            let nearestDist = Infinity;
+            
+            state.players.forEach(p => {
+                if (p.id === 0 || !p.alive) return;
+                
+                const screenX = centerX + p.x - state.player.x;
+                const screenY = centerY + p.y - state.player.y;
+                
+                const dist = Math.sqrt(
+                    Math.pow(screenX - centerX, 2) + 
+                    Math.pow(screenY - centerY, 2)
+                );
+                
+                if (dist < 80 && dist < nearestDist) {
+                    nearestDist = dist;
+                    nearestPlayer = p;
+                }
+            });
+            
+            state.targetPlayer = nearestPlayer;
+            
+            const actionBtn = document.getElementById('actionBtn');
+            const pickupMsg = document.getElementById('pickupMsg');
+            
+            if (nearestPlayer && state.hasGun && nearestPlayer.alive) {
+                actionBtn.style.display = 'block';
+                actionBtn.textContent = '🔫 射擊 ' + nearestPlayer.name;
+                actionBtn.className = 'sheriff-action';
+                pickupMsg.style.display = 'none';
+            } else if (nearestPlayer && state.role === 'killer') {
+                actionBtn.style.display = 'block';
+                actionBtn.textContent = '🔪 殺害 ' + nearestPlayer.name;
+                actionBtn.className = '';
+                pickupMsg.style.display = 'none';
+            } else {
+                actionBtn.style.display = 'none';
+            }
+            
+            const gunDist = Math.sqrt(
+                Math.pow(100 - state.player.x, 2) + 
+                Math.pow(50 - state.player.y, 2)
+            );
+            
+            if (state.gunOnGround && gunDist < 50 && !state.hasGun) {
+                pickupMsg.style.display = 'block';
+            } else {
+                pickupMsg.style.display = 'none';
+            }
+        }
+        
+        function attack(target) {
+            if (!target || !target.alive) return;
+            
+            if (state.role === 'sheriff' && state.hasGun) {
+                if (state.ammo <= 0) {
+                    showStatus('沒子彈了！');
+                    return;
+                }
+                
+                if (target.role === 'killer') {
+                    target.alive = false;
+                    state.ammo--;
+                    updateAmmoDisplay();
+                    showStatus(`🎉 你擊斃了殺手！好人獲勝！`);
+                    endGame(true);
+                } else {
+                    state.hasGun = false;
+                    state.ammo = 0;
+                    state.gunOnGround = true;
+                    target.alive = false;
+                    updateAmmoDisplay();
+                    showStatus(`💀 你誤殺了平民！槍枝掉落！警長死亡！`);
+                    endGame(false);
+                }
+            } else if (state.role === 'killer') {
+                if (Math.random() < 0.7) {
+                    target.alive = false;
+                    showStatus(`💀 你殺害了 ${target.name}！`);
+                    
+                    const aliveCount = state.players.filter(p => p.alive && p.role !== 'killer').length;
+                    if (aliveCount === 0) {
+                        showStatus('👑 殺手獲勝！所有平民已死亡！');
+                        endGame(false);
+                    }
+                } else {
+                    showStatus('❌ 殺害失敗！');
+                }
+            }
+        }
+        
+        function showStatus(msg) {
+            const statusMsg = document.getElementById('statusMsg');
+            statusMsg.textContent = msg;
+            statusMsg.style.display = 'block';
+        }
+        
+        function endGame(win) {
+            state.gameOver = true;
+            
+            setTimeout(() => {
+                document.getElementById('statusMsg').innerHTML += '<br><br><button onclick="location.reload()" style="padding: 15px 40px; font-size: 20px; border: none; border-radius: 8px; background: #ff4444; color: #fff; cursor: pointer;">重新開始</button>';
+            }, 2000);
+        }
+        
+        function movePlayer() {
+            const speed = 3;
+            const cos = Math.cos(state.playerAngle);
+            const sin = Math.sin(state.playerAngle);
+            
+            if (state.keys.w) {
+                state.player.x += cos * speed;
+                state.player.y += sin * speed;
+            }
+            if (state.keys.s) {
+                state.player.x -= cos * speed;
+                state.player.y -= sin * speed;
+            }
+            if (state.keys.a) {
+                state.player.x += sin * speed;
+                state.player.y -= cos * speed;
+            }
+            if (state.keys.d) {
+                state.player.x -= sin * speed;
+                state.player.y += cos * speed;
+            }
+            
+            const boundary = 400;
+            state.player.x = Math.max(-boundary, Math.min(boundary, state.player.x));
+            state.player.y = Math.max(-boundary, Math.min(boundary, state.player.y));
+        }
+        
+        function tryPickupGun() {
+            if (state.gunOnGround && !state.hasGun) {
+                const gunDist = Math.sqrt(
+                    Math.pow(100 - state.player.x, 2) + 
+                    Math.pow(50 - state.player.y, 2)
+                );
+                
+                if (gunDist < 50) {
+                    state.hasGun = true;
+                    state.ammo = 6;
+                    state.gunOnGround = false;
+                    updateAmmoDisplay();
+                    showStatus('🔫 撿起了槍枝！');
+                }
+            }
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (e.key.toLowerCase() === 'w') state.keys.w = true;
+            if (e.key.toLowerCase() === 'a') state.keys.a = true;
+            if (e.key.toLowerCase() === 's') state.keys.s = true;
+            if (e.key.toLowerCase() === 'd') state.keys.d = true;
+            if (e.key.toLowerCase() === 'e') tryPickupGun();
+        });
+        
+        document.addEventListener('keyup', e => {
+            if (e.key.toLowerCase() === 'w') state.keys.w = false;
+            if (e.key.toLowerCase() === 'a') state.keys.a = false;
+            if (e.key.toLowerCase() === 's') state.keys.s = false;
+            if (e.key.toLowerCase() === 'd') state.keys.d = false;
+        });
+        
+        document.addEventListener('mousemove', e => {
+            if (!state.gameStarted || state.gameOver) return;
+            state.playerAngle += e.movementX * 0.003;
+        });
+        
+        document.getElementById('actionBtn').addEventListener('click', () => {
+            if (state.targetPlayer) {
+                document.getElementById('killConfirm').style.display = 'block';
+            }
+        });
+        
+        document.getElementById('confirmAttack').addEventListener('click', () => {
+            document.getElementById('killConfirm').style.display = 'none';
+            attack(state.targetPlayer);
+        });
+        
+        document.getElementById('cancelAttack').addEventListener('click', () => {
+            document.getElementById('killConfirm').style.display = 'none';
+        });
+        
+        document.getElementById('startBtn').addEventListener('click', () => {
+            document.getElementById('startScreen').style.display = 'none';
+            initGame();
+            state.gameStarted = true;
+            
+            const timer = setInterval(() => {
+                if (!state.gameStarted || state.gameOver) {
+                    clearInterval(timer);
+                    return;
+                }
+                
+                state.timeRemaining--;
+                document.getElementById('timer').textContent = formatTime(state.timeRemaining);
+                
+                if (state.timeRemaining <= 0) {
+                    clearInterval(timer);
+                    showStatus('⏰ 時間到！殺手獲勝！');
+                    endGame(false);
+                }
+            }, 1000);
+            
+            const moveInterval = setInterval(() => {
+                if (!state.gameStarted || state.gameOver) {
+                    clearInterval(moveInterval);
+                    return;
+                }
+                movePlayer();
+                checkInteractions();
+            }, 16);
+            
+            gameLoop();
+        });
+        
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+        
+        canvas.addEventListener('click', () => {
+            if (state.gameStarted && !state.gameOver) {
+                canvas.requestPointerLock();
+            }
+        });
+        
+        document.addEventListener('pointerlockchange', () => {
+            if (!document.pointerLockElement) {
+                // Pointer lock released
+            }
+        });
+    </script>
+</body>
+</html>
